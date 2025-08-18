@@ -8,16 +8,12 @@ import { chromium } from "playwright"; // fallback browser
 export async function runLighthouse(url, { chromePath }) {
   const start = Date.now();
   let chrome;
-
-  // If CHROME_PATH is missing or invalid, use Playwright's Chromium
-  let executablePath =
-    chromePath && fs.existsSync(chromePath)
-      ? chromePath
-      : chromium.executablePath(); // works after `npx playwright install chromium`
-
+  
+  const executablePath = chromium.executablePath(); // no need for CHROME_PATH
   try {
     chrome = await launch({
-      chromePath: executablePath, // leave undefined if you want auto-detect
+      chromePath: executablePath,
+      port: 9223,
       chromeFlags: ["--headless=new", "--no-sandbox"],
       logLevel: "error",
     });

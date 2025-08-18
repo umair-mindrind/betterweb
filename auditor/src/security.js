@@ -48,13 +48,13 @@ const KNOWN_TRACKER_HOST_SUBSTR = [
 
 export async function runSecurity(urlStr) {
   const start = Date.now();
-  let browser;
   try {
     const u = new URL(urlStr);
     const headersResp = await fetch(urlStr, {
       method: "GET",
       redirect: "follow",
     });
+
     const headers = Object.fromEntries(
       [...headersResp.headers.entries()].map(([k, v]) => [k.toLowerCase(), v])
     );
@@ -71,9 +71,18 @@ export async function runSecurity(urlStr) {
       Object.keys(headerChecks).length;
 
     const cert =
-      u.protocol === "https:"
-        ? await getCertInfo(u.hostname)
-        : { daysToExpiry: null };
+      u.protocol === "https:" ? await getCertInfo(u.hostname) : { daysToExpiry: null };
+
+    // 🧁 Cookie checks
+    const rawSetCookies = headersResp.headers.getSetCookie?.() ||
+      headersResp.headers.raw?.()["set-cookie"] || [];
+    const cookieChecks = rawSetCookies.map((cookie) => {
+      const domain = parseCookieDomain(cookie, u.hostname);
+      const isTracker = KNOWN_TRACKER_HOST_SUBSTR.some((sub) =>
+        domain.includes(sub)
+      );
+      return { domain, isTracker };
+    });
 
     const normalized = {
       headerChecks,
@@ -81,14 +90,14 @@ export async function runSecurity(urlStr) {
       certDaysToExpiry: cert.daysToExpiry,
       cookieChecks,
       securityScore: Math.round(
-        // 70% headers coverage + 30% cert runway (cap at 90 days)
         coverage * 70 + (Math.min(90, cert.daysToExpiry ?? 0) / 90) * 30
       ),
     };
+
     return {
       success: true,
       durationMs: Date.now() - start,
-      raw: { headers, cert },
+      raw: { headers, cert, cookies: rawSetCookies },
       normalized,
     };
   } catch (e) {
