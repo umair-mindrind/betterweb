@@ -1,20 +1,4 @@
 import https from "node:https";
-import fs from "node:fs/promises";
-import path from "node:path";
-
-async function saveRawToFile(raw, prefix) {
-  try {
-    const dir = path.resolve(process.cwd(), "raw");
-    await fs.mkdir(dir, { recursive: true });
-    const safe = prefix.replace(/[^a-z0-9._-]/gi, "-").toLowerCase();
-    const filename = `${safe}-${Date.now()}.json`;
-    const full = path.join(dir, filename);
-    await fs.writeFile(full, JSON.stringify(raw, null, 2), "utf8");
-  } catch (err) {
-    // best-effort, don't fail the audit if saving fails
-    console.warn("saveRawToFile security write failed:", err?.message || err);
-  }
-}
 
 function getCertInfo(hostname) {
   return new Promise((resolve) => {
@@ -39,8 +23,32 @@ function getCertInfo(hostname) {
   });
 }
 
+function parseCookieDomain(cookieStr, defaultHost) {
+  const parts = cookieStr.split(";").map((p) => p.trim());
+  const domainPart = parts.find((p) => /^domain=/i.test(p));
+  if (!domainPart) return defaultHost;
+  return domainPart.split("=")[1].replace(/^\./, "").toLowerCase();
+}
+
+const KNOWN_TRACKER_HOST_SUBSTR = [
+  "google-analytics",
+  "googletagmanager",
+  "doubleclick",
+  "facebook",
+  "facebook.net",
+  "bing.com",
+  "tiktok",
+  "hotjar",
+  "segment",
+  "mixpanel",
+  "amplitude",
+  "adsystem",
+  "ads",
+];
+
 export async function runSecurity(urlStr) {
   const start = Date.now();
+  let browser;
   try {
     const u = new URL(urlStr);
     const headersResp = await fetch(urlStr, {
@@ -67,13 +75,11 @@ export async function runSecurity(urlStr) {
         ? await getCertInfo(u.hostname)
         : { daysToExpiry: null };
 
-    // save raw headers + cert prior to normalization/filtering
-    // await saveRawToFile({ headers, cert }, `security-${u.hostname}`);
-
     const normalized = {
       headerChecks,
       headerCoveragePct: Math.round(coverage * 100),
       certDaysToExpiry: cert.daysToExpiry,
+      cookieChecks,
       securityScore: Math.round(
         // 70% headers coverage + 30% cert runway (cap at 90 days)
         coverage * 70 + (Math.min(90, cert.daysToExpiry ?? 0) / 90) * 30
