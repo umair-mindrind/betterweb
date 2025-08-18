@@ -7,7 +7,8 @@
     "betterweb-auditor": "src/index.js"
   },
   "scripts": {
-    "postinstall": "npx playwright install chromium"
+    "postinstall": "npx playwright install chromium",
+    "build": "npm --prefix ../laravel run build"
   },
   "dependencies": {
     "@axe-core/playwright": "^4.9.0",

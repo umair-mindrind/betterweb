@@ -1,0 +1,9 @@
+{
+  "name": "betterweb-monorepo",
+  "private": true,
+  "scripts": {
+    "install:laravel": "npm --prefix laravel install",
+    "build:laravel": "npm --prefix laravel run build",
+    "build": "npm run build:laravel"
+  }
+}
