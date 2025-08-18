@@ -34,6 +34,15 @@
                                     <p class="font-medium">{{ audit.total_score || 'N/A' }}/100</p>
                                 </div>
                             </div>
+                            <div v-if="recentScores && recentScores.length" class="mb-6">
+                                <h4 class="text-sm font-medium mb-2">Recent scores</h4>
+                                <div class="flex items-end space-x-1 h-12">
+                                    <div v-for="s in recentScores.slice().reverse()" :key="s.id" class="w-4" :title="s.created_at + ': ' + (s.total_score ?? 'N/A')">
+                                        <div :style="{height: (s.total_score || 0) + '%', background:'#3b82f6', borderRadius: '2px'}"></div>
+                                    </div>
+                                </div>
+                                <div class="text-xs text-gray-500 mt-2">Last {{ recentScores.length }} audits (left oldest → right newest)</div>
+                            </div>
                         </div>
 
                         <!-- Audit Results -->

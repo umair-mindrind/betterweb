@@ -78,7 +78,7 @@ class RunAuditJob implements ShouldQueue {
         $a11y  = max(0, 100 - min(100, ($payload['axe']['normalized']['violationScorePenalty'] ?? 0)));
         $sec   = (int) ($payload['security']['normalized']['securityScore'] ?? 0);
 
-        $weights = ['speed'=>35,'accessibility'=>30,'security'=>20,'seo'=>15];
+    $weights = ['speed'=>25,'accessibility'=>25,'security'=>25,'seo'=>25];
         $weighted = (
             $speed * $weights['speed'] +
             $a11y * $weights['accessibility'] +
