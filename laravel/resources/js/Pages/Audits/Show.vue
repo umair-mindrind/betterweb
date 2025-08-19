@@ -44,7 +44,13 @@
                                 <div class="text-xs text-gray-500 mt-2">Last {{ recentScores.length }} audits (left oldest → right newest)</div>
                             </div>
                         </div>
-
+                        <!-- GPT Summary -->
+                        <div v-if="audit.gpt_summary" class="mb-8">
+                            <h3 class="text-lg font-medium mb-4">GPT Summary</h3>
+                            <div class="bg-gray-100 p-4 rounded-lg text-sm whitespace-pre-wrap leading-relaxed text-gray-800">
+                                {{ audit.gpt_summary }}
+                            </div>
+                        </div>
                         <!-- Audit Results -->
                         <div v-if="audit.results && audit.results.length > 0">
                             <h3 class="text-lg font-medium mb-4">Audit Results</h3>

@@ -46,15 +46,24 @@ class AuditController extends Controller
     {
         $audit->load('results');
 
-        // recent audits for same URL (last 12) to show a simple trend
         $recent = \App\Models\Audit::where('url', $audit->url)
             ->orderBy('created_at', 'desc')
             ->limit(12)
             ->get(['id','created_at','total_score'])
-            ->map(fn($a) => ['id'=>$a->id,'created_at'=>$a->created_at->toDateString(),'total_score'=>$a->total_score]);
+            ->map(fn($a) => [
+                'id' => $a->id,
+                'created_at' => $a->created_at->toDateString(),
+                'total_score' => $a->total_score,
+            ]);
 
         return Inertia::render('Audits/Show', [
-            'audit' => $audit,
+            'audit' => $audit->only([
+                'id', 'url', 'status', 'total_score',
+                'category_scores', 'started_at',
+                'finished_at', 'gpt_summary',
+            ]) + [
+                'results' => $audit->results,
+            ],
             'recentScores' => $recent,
         ]);
     }

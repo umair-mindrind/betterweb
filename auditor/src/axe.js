@@ -53,10 +53,12 @@ export async function runAxe(url) {
       0
     );
     const normalized = {
-      countsByImpact,
-      totalNodes: violations.reduce((s, v) => s + v.nodes.length, 0),
-      violationScorePenalty: Math.min(100, penalty),
-    };
+        countsByImpact,
+        totalNodes: violations.reduce((s, v) => s + v.nodes.length, 0),
+        violationScorePenalty: Math.min(100, penalty),
+        violationTitles: violations.map(v => v.help).filter(Boolean), // extract readable titles
+      };
+
 
     return {
       success: true,

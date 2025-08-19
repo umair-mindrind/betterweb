@@ -11,13 +11,13 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
 use Symfony\Component\Process\Process as SymfonyProcess;
+use App\Services\GenerateGptSummaryService;
 
 class RunAuditJob implements ShouldQueue {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public ?int $timeout;
     public function __construct(public int $auditId) {
-        // keep a human-readable timeout value but allow null to indicate "no internal process timeout"
         $this->timeout = is_numeric(env('AUDIT_TIMEOUT_MS', 120000)) ? (int) env('AUDIT_TIMEOUT_MS', 120000) / 1000 : null;
     }
 
@@ -28,10 +28,8 @@ class RunAuditJob implements ShouldQueue {
         $url = $audit->url;
         $runner = base_path('../auditor/src/index.js');
 
-        // Use Symfony Process directly so we can explicitly disable its timeout when needed
         $sym = new SymfonyProcess(['node', $runner, '--url='.$url, '--chromePath='.env('CHROME_PATH','')]);
 
-        // If a timeout is configured, apply it; otherwise disable the internal timeout to let the CLI worker/PHP handle it
         if ($this->timeout !== null && $this->timeout > 0) {
             $sym->setTimeout($this->timeout);
         } else {
@@ -78,13 +76,19 @@ class RunAuditJob implements ShouldQueue {
         $a11y  = max(0, 100 - min(100, ($payload['axe']['normalized']['violationScorePenalty'] ?? 0)));
         $sec   = (int) ($payload['security']['normalized']['securityScore'] ?? 0);
 
-    $weights = ['speed'=>25,'accessibility'=>25,'security'=>25,'seo'=>25];
+        $weights = ['speed'=>25,'accessibility'=>25,'security'=>25,'seo'=>25];
         $weighted = (
             $speed * $weights['speed'] +
             $a11y * $weights['accessibility'] +
             $sec * $weights['security'] +
             $seo * $weights['seo']
         ) / array_sum($weights);
+
+        $summary = GenerateGptSummaryService::generate([
+            'lighthouse' => $payload['lighthouse']['normalized'] ?? [],
+            'axe' => $payload['axe']['normalized'] ?? [],
+            'security' => $payload['security']['normalized'] ?? [],
+        ]);
 
         $audit->update([
             'category_scores' => [
@@ -94,6 +98,7 @@ class RunAuditJob implements ShouldQueue {
                 'seo' => $seo,
             ],
             'total_score' => (int) round($weighted),
+            'gpt_summary' => $summary,
             'status' => 'completed',
             'finished_at' => now(),
         ]);
